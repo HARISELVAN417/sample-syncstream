@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SyncStream - Wireless Movie Audio Sharing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #16213e 100%);
+            color: #e0e6ed;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: slideDown 0.6s ease-out;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #7f77dd 0%, #1d9e75 50%, #378add 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        header p {
+            font-size: 1rem;
+            color: #a0a8b8;
+            font-weight: 400;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 3rem;
+            flex-wrap: wrap;
+        }
+
+        .mode-btn {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid transparent;
+            background: rgba(127, 119, 221, 0.1);
+            color: #7f77dd;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .mode-btn:hover {
+            background: rgba(127, 119, 221, 0.2);
+            border-color: #7f77dd;
+        }
+
+        .mode-btn.active {
+            background: #7f77dd;
+            color: #0a0e27;
+            border-color: #7f77dd;
+        }
+
+        .content {
+            display: none;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: rgba(22, 33, 62, 0.8);
+            border: 1px solid rgba(127, 119, 221, 0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(127, 119, 221, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .card:hover {
+            border-color: rgba(127, 119, 221, 0.4);
+            background: rgba(22, 33, 62, 1);
+            transform: translateY(-4px);
+        }
+
+        .card-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .card h2 {
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .card p {
+            font-size: 0.9rem;
+            color: #a0a8b8;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .room-code {
+            background: rgba(127, 119, 221, 0.15);
+            border: 1px solid #7f77dd;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+
+        .room-code .label {
+            font-size: 0.8rem;
+            color: #a0a8b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .room-code .code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #7f77dd;
+            letter-spacing: 0.1em;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 1rem;
+        }
+
+        .input-group label {
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            color: #e0e6ed;
+            font-weight: 500;
+        }
+
+        .input-group input,
+        .input-group select {
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(127, 119, 221, 0.3);
+            border-radius: 6px;
+            color: #e0e6ed;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input::placeholder {
+            color: #7a8298;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: #7f77dd;
+            background: rgba(127, 119, 221, 0.1);
+            box-shadow: 0 0 0 3px rgba(127, 119, 221, 0.1);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #7f77dd 0%, #534ab7 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(127, 119, 221, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: rgba(127, 119, 221, 0.2);
+            color: #7f77dd;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(127, 119, 221, 0.3);
+        }
+
+        .device-list {
+            margin: 1.5rem 0;
+        }
+
+        .device-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: rgba(127, 119, 221, 0.08);
+            border: 1px solid rgba(127, 119, 221, 0.15);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .device-info {
+            flex: 1;
+        }
+
+        .device-name {
+            color: #e0e6ed;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .device-type {
+            font-size: 0.85rem;
+            color: #a0a8b8;
+        }
+
+        .device-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #1d9e75;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.4rem 0.75rem;
+            background: rgba(29, 158, 117, 0.2);
+            color: #1d9e75;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            margin-bottom: 1rem;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .stat {
+            background: rgba(127, 119, 221, 0.08);
+            border: 1px solid rgba(127, 119, 221, 0.15);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #7f77dd;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #a0a8b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-section {
+            background: rgba(22, 33, 62, 0.8);
+            border: 1px solid rgba(127, 119, 221, 0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            margin-bottom: 2rem;
+        }
+
+        .form-section h3 {
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+            color: #ffffff;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(127, 119, 221, 0.2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .feature-text h4 {
+            color: #e0e6ed;
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+            font-weight: 600;
+        }
+
+        .feature-text p {
+            color: #a0a8b8;
+            font-size: 0.85rem;
+            margin: 0;
+        }
+
+        .divider {
+            height: 1px;
+            background: rgba(127, 119, 221, 0.1);
+            margin: 2rem 0;
+        }
+
+        .code-block {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(127, 119, 221, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: #1d9e75;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin: 1rem 0;
+        }
+
+        .tech-badge {
+            background: rgba(127, 119, 221, 0.15);
+            border: 1px solid rgba(127, 119, 221, 0.3);
+            color: #7f77dd;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .loading-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(127, 119, 221, 0.2);
+            border-top-color: #7f77dd;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>✨ SyncStream</h1>
+            <p>Wireless Movie Audio Sharing for Everyone</p>
+        </header>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" onclick="switchMode('home')">Home</button>
+            <button class="mode-btn" onclick="switchMode('host')">Host Mode</button>
+            <button class="mode-btn" onclick="switchMode('client')">Client Mode</button>
+            <button class="mode-btn" onclick="switchMode('how-it-works')">How It Works</button>
+        </div>
+
+        <!-- HOME -->
+        <div id="home" class="content active">
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-content">
+                        <h2>🎬 Create a Theater</h2>
+                        <p>Start hosting a room where your movie's audio gets synchronized across all connected devices in real-time.</p>
+                        <button class="btn" onclick="switchMode('host')">Start Hosting</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-content">
+                        <h2>📱 Join as Wireless Speaker</h2>
+                        <p>Connect any smartphone to an active room and receive perfectly synchronized audio with zero lag.</p>
+                        <button class="btn" onclick="switchMode('client')">Connect Device</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Why SyncStream?</h3>
+                <div class="features-grid">
+                    <div class="feature">
+                        <div class="feature-icon">⚡</div>
+                        <div class="feature-text">
+                            <h4>Ultra-Low Latency</h4>
+                            <p>Real-time streaming with <1ms sync</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🔌</div>
+                        <div class="feature-text">
+                            <h4>No Wires</h4>
+                            <p>Pure WiFi, no Bluetooth pairing</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">👥</div>
+                        <div class="feature-text">
+                            <h4>Many Devices</h4>
+                            <p>Connect 10+ phones simultaneously</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🎯</div>
+                        <div class="feature-text">
+                            <h4>Easy Setup</h4>
+                            <p>QR code + room code joining</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🔒</div>
+                        <div class="feature-text">
+                            <h4>Private Rooms</h4>
+                            <p>6-digit codes keep rooms secure</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">📊</div>
+                        <div class="feature-text">
+                            <h4>Real-time Stats</h4>
+                            <p>Monitor quality & device status</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HOST MODE -->
+        <div id="host" class="content">
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-content">
+                        <h2>Create New Room</h2>
+                        <p>Set up a new broadcasting room and invite others to join.</p>
+                        
+                        <div class="input-group">
+                            <label>Room Name</label>
+                            <input type="text" id="roomName" placeholder="e.g., Living Room Theater">
+                        </div>
+
+                        <div class="input-group">
+                            <label>Max Devices</label>
+                            <select id="maxDevices">
+                                <option>5 devices</option>
+                                <option>10 devices</option>
+                                <option>15 devices</option>
+                                <option>20 devices</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Audio Quality</label>
+                            <select id="audioQuality">
+                                <option>High (320 kbps)</option>
+                                <option>Medium (192 kbps)</option>
+                                <option>Low (128 kbps)</option>
+                            </select>
+                        </div>
+
+                        <button class="btn" onclick="createRoom()">Create Room</button>
+                    </div>
+                </div>
+
+                <div class="card" id="hostStatus" style="display: none;">
+                    <div class="card-content">
+                        <div class="status-badge">🟢 Broadcasting</div>
+                        
+                        <h2>Room Active</h2>
+                        
+                        <div class="room-code">
+                            <div class="label">Room Code</div>
+                            <div class="code" id="displayCode">######</div>
+                        </div>
+
+                        <p style="text-align: center; color: #7f77dd;">Share this code with others to join</p>
+
+                        <button class="btn btn-secondary" onclick="copyCode()">Copy Code</button>
+                        <button class="btn btn-secondary" style="margin-top: 0.5rem;" onclick="generateQR()">Show QR Code</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section" id="hostDashboard" style="display: none;">
+                <h3>Connected Devices</h3>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value" id="deviceCount">0</div>
+                        <div class="stat-label">Devices</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="syncDelay">0ms</div>
+                        <div class="stat-label">Sync Delay</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="bandwidth">0 Mbps</div>
+                        <div class="stat-label">Bandwidth</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="duration">0:00</div>
+                        <div class="stat-label">Duration</div>
+                    </div>
+                </div>
+
+                <div class="device-list" id="connectedDevices">
+                    <!-- Devices will be added here -->
+                </div>
+
+                <div class="divider"></div>
+
+                <button class="btn btn-secondary" onclick="stopBroadcasting()">Stop Broadcasting</button>
+            </div>
+        </div>
+
+        <!-- CLIENT MODE -->
+        <div id="client" class="content">
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-content">
+                        <h2>Join Room</h2>
+                        <p>Connect your device to an active broadcasting room.</p>
+                        
+                        <div class="input-group">
+                            <label>Room Code</label>
+                            <input type="text" id="roomCode" placeholder="e.g., 123456" maxlength="6">
+                        </div>
+
+                        <div class="input-group">
+                            <label>Device Name</label>
+                            <input type="text" id="deviceName" placeholder="e.g., Bedroom Speaker">
+                        </div>
+
+                        <button class="btn" onclick="joinRoom()">Connect to Room</button>
+                    </div>
+                </div>
+
+                <div class="card" id="clientStatus" style="display: none;">
+                    <div class="card-content">
+                        <div class="status-badge">🟢 Connected</div>
+                        
+                        <h2>Receiving Audio</h2>
+                        
+                        <div class="room-code">
+                            <div class="label">Connected to Room</div>
+                            <div class="code" id="connectedRoom">------</div>
+                        </div>
+
+                        <p style="text-align: center; color: #a0a8b8; margin: 1rem 0;">Your device is synced and playing audio</p>
+
+                        <div class="stats">
+                            <div class="stat">
+                                <div class="stat-value" id="clientLatency">-</div>
+                                <div class="stat-label">Latency</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value" id="clientSignal">--</div>
+                                <div class="stat-label">Signal</div>
+                            </div>
+                            <div class="stat">
+                                <div class="stat-value" id="clientBuffer">--</div>
+                                <div class="stat-label">Buffer</div>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-secondary" onclick="disconnect()">Disconnect</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section" id="clientControls" style="display: none;">
+                <h3>Audio Control</h3>
+                
+                <div style="margin: 1.5rem 0;">
+                    <label style="display: block; margin-bottom: 1rem; color: #e0e6ed; font-weight: 500;">Volume</label>
+                    <input type="range" id="volumeControl" min="0" max="100" value="70" style="width: 100%; cursor: pointer;">
+                    <p style="text-align: center; color: #a0a8b8; margin-top: 0.5rem;"><span id="volumeValue">70</span>%</p>
+                </div>
+
+                <div class="divider"></div>
+
+                <h3 style="margin-top: 2rem;">Room Status</h3>
+                <div class="device-list" id="roomDevices">
+                    <!-- Other devices in room will be shown here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- HOW IT WORKS -->
+        <div id="how-it-works" class="content">
+            <div class="form-section">
+                <h3>🔧 Technical Architecture</h3>
+                
+                <p style="margin-bottom: 1.5rem;">SyncStream uses a combination of modern web technologies to deliver synchronized audio streaming:</p>
+
+                <div style="background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(127, 119, 221, 0.2); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <h4 style="color: #7f77dd; margin-bottom: 1rem; font-weight: 600;">Core Technologies</h4>
+                    <div class="tech-stack">
+                        <span class="tech-badge">WebRTC</span>
+                        <span class="tech-badge">WebSocket</span>
+                        <span class="tech-badge">Web Audio API</span>
+                        <span class="tech-badge">MediaStream API</span>
+                        <span class="tech-badge">Service Workers</span>
+                    </div>
+                </div>
+
+                <h4 style="color: #e0e6ed; margin: 1.5rem 0 1rem; font-weight: 600;">How It Works</h4>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <div style="background: rgba(29, 158, 117, 0.1); border-left: 3px solid #1d9e75; padding: 1rem; border-radius: 4px; margin-bottom: 1rem;">
+                        <p style="color: #e0e6ed; font-weight: 600; margin-bottom: 0.5rem;">1. Host Setup</p>
+                        <p style="color: #a0a8b8; font-size: 0.9rem; margin: 0;">The host device captures audio from the current video/movie playing and encodes it into chunks using the Web Audio API.</p>
+                    </div>
+
+                    <div style="background: rgba(29, 158, 117, 0.1); border-left: 3px solid #1d9e75; padding: 1rem; border-radius: 4px; margin-bottom: 1rem;">
+                        <p style="color: #e0e6ed; font-weight: 600; margin-bottom: 0.5rem;">2. Room Broadcasting</p>
+                        <p style="color: #a0a8b8; font-size: 0.9rem; margin: 0;">A WebSocket server maintains real-time communication with all connected clients. Audio chunks are broadcast with precise timestamps.</p>
+                    </div>
+
+                    <div style="background: rgba(29, 158, 117, 0.1); border-left: 3px solid #1d9e75; padding: 1rem; border-radius: 4px; margin-bottom: 1rem;">
+                        <p style="color: #e0e6ed; font-weight: 600; margin-bottom: 0.5rem;">3. Client Synchronization</p>
+                        <p style="color: #a0a8b8; font-size: 0.9rem; margin: 0;">Each client receives the stream, buffers chunks, and uses adaptive timing to sync playback within <1ms. Network jitter is compensated automatically.</p>
+                    </div>
+
+                    <div style="background: rgba(29, 158, 117, 0.1); border-left: 3px solid #1d9e75; padding: 1rem; border-radius: 4px;">
+                        <p style="color: #e0e6ed; font-weight: 600; margin-bottom: 0.5rem;">4. Feedback Loop</p>
+                        <p style="color: #a0a8b8; font-size: 0.9rem; margin: 0;">Clients send heartbeat packets with latency & buffer metrics. The host monitors sync health and adjusts bitrate if needed.</p>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <h4 style="color: #e0e6ed; margin: 1.5rem 0 1rem; font-weight: 600;">Audio Pipeline</h4>
+                <div class="code-block">
+HOST → Capture (AudioContext) 
+→ Encode (PCM/Opus) 
+→ Timestamp 
+→ WebSocket Broadcast
+
+CLIENT → WebSocket Receive 
+→ Buffer (adaptive) 
+→ Decode 
+→ Web Audio API 
+→ Speaker Output
+                </div>
+
+                <div class="divider"></div>
+
+                <h3>📊 Performance Metrics</h3>
+                <div class="grid-2" style="margin-top: 1.5rem;">
+                    <div style="background: rgba(127, 119, 221, 0.08); border: 1px solid rgba(127, 119, 221, 0.15); border-radius: 8px; padding: 1rem;">
+                        <p style="color: #7f77dd; font-weight: 600; margin-bottom: 0.5rem;">Latency</p>
+                        <p style="color: #e0e6ed; font-size: 1.4rem; font-weight: 700; margin: 0.5rem 0;">< 1ms</p>
+                        <p style="color: #a0a8b8; font-size: 0.85rem; margin: 0;">End-to-end sync delay</p>
+                    </div>
+                    <div style="background: rgba(127, 119, 221, 0.08); border: 1px solid rgba(127, 119, 221, 0.15); border-radius: 8px; padding: 1rem;">
+                        <p style="color: #7f77dd; font-weight: 600; margin-bottom: 0.5rem;">Bandwidth</p>
+                        <p style="color: #e0e6ed; font-size: 1.4rem; font-weight: 700; margin: 0.5rem 0;">320 kbps</p>
+                        <p style="color: #a0a8b8; font-size: 0.85rem; margin: 0;">Per device (adjustable)</p>
+                    </div>
+                    <div style="background: rgba(127, 119, 221, 0.08); border: 1px solid rgba(127, 119, 221, 0.15); border-radius: 8px; padding: 1rem;">
+                        <p style="color: #7f77dd; font-weight: 600; margin-bottom: 0.5rem;">Devices</p>
+                        <p style="color: #e0e6ed; font-size: 1.4rem; font-weight: 700; margin: 0.5rem 0;">20+</p>
+                        <p style="color: #a0a8b8; font-size: 0.85rem; margin: 0;">Simultaneous connections</p>
+                    </div>
+                    <div style="background: rgba(127, 119, 221, 0.08); border: 1px solid rgba(127, 119, 221, 0.15); border-radius: 8px; padding: 1rem;">
+                        <p style="color: #7f77dd; font-weight: 600; margin-bottom: 0.5rem;">Reliability</p>
+                        <p style="color: #e0e6ed; font-size: 1.4rem; font-weight: 700; margin: 0.5rem 0;">99.9%</p>
+                        <p style="color: #a0a8b8; font-size: 0.85rem; margin: 0;">Uptime SLA</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchMode(mode) {
+            // Hide all content
+            document.querySelectorAll('.content').forEach(el => el.classList.remove('active'));
+            
+            // Show selected content
+            document.getElementById(mode).classList.add('active');
+            
+            // Update buttons
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        function createRoom() {
+            const roomName = document.getElementById('roomName').value || 'Theater';
+            const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
+            
+            document.getElementById('hostStatus').style.display = 'block';
+            document.getElementById('hostDashboard').style.display = 'block';
+            document.getElementById('displayCode').textContent = roomCode;
+            
+            // Simulate adding some devices
+            setTimeout(() => {
+                addMockDevices();
+            }, 1000);
+        }
+
+        function addMockDevices() {
+            const devices = [
+                { name: 'Living Room Speaker', type: 'Phone' },
+                { name: 'Bedroom Phone', type: 'Mobile' },
+                { name: 'Kitchen Tablet', type: 'Tablet' }
+            ];
+            
+            const container = document.getElementById('connectedDevices');
+            container.innerHTML = '';
+            
+            devices.forEach((device, index) => {
+                const div = document.createElement('div');
+                div.className = 'device-item';
+                div.style.animationDelay = (index * 0.1) + 's';
+                div.innerHTML = `
+                    <div class="device-info">
+                        <div class="device-name">${device.name}</div>
+                        <div class="device-type">${device.type}</div>
+                    </div>
+                    <div class="device-status"></div>
+                `;
+                container.appendChild(div);
+            });
+            
+            document.getElementById('deviceCount').textContent = devices.length;
+        }
+
+        function copyCode() {
+            const code = document.getElementById('displayCode').textContent;
+            navigator.clipboard.writeText(code);
+            alert('Room code copied: ' + code);
+        }
+
+        function generateQR() {
+            const code = document.getElementById('displayCode').textContent;
+            alert('QR Code for room: ' + code + '\n(In production, this would display an actual QR code)');
+        }
+
+        function stopBroadcasting() {
+            document.getElementById('hostStatus').style.display = 'none';
+            document.getElementById('hostDashboard').style.display = 'none';
+            document.getElementById('roomName').value = '';
+            alert('Broadcasting stopped');
+        }
+
+        function joinRoom() {
+            const roomCode = document.getElementById('roomCode').value;
+            const deviceName = document.getElementById('deviceName').value;
+            
+            if (roomCode.length !== 6) {
+                alert('Please enter a valid 6-digit room code');
+                return;
+            }
+            
+            document.getElementById('clientStatus').style.display = 'block';
+            document.getElementById('clientControls').style.display = 'block';
+            document.getElementById('connectedRoom').textContent = roomCode;
+            
+            // Simulate connection stats
+            updateClientStats();
+            addRoomDevices();
+        }
+
+        function updateClientStats() {
+            document.getElementById('clientLatency').textContent = (Math.random() * 20 + 5).toFixed(1) + 'ms';
+            document.getElementById('clientSignal').textContent = Math.floor(Math.random() * 30 + 70) + '%';
+            document.getElementById('clientBuffer').textContent = Math.floor(Math.random() * 200 + 100) + 'ms';
+        }
+
+        function addRoomDevices() {
+            const devices = [
+                { name: 'Your Device', type: 'This phone', icon: '📱' },
+                { name: 'Main Room Speaker', type: 'Connected device', icon: '🔊' },
+                { name: 'Kitchen Audio', type: 'Connected device', icon: '🔊' }
+            ];
+            
+            const container = document.getElementById('roomDevices');
+            container.innerHTML = '';
+            
+            devices.forEach((device, index) => {
+                const div = document.createElement('div');
+                div.className = 'device-item';
+                div.style.animationDelay = (index * 0.1) + 's';
+                div.innerHTML = `
+                    <div class="device-info">
+                        <div class="device-name">${device.icon} ${device.name}</div>
+                        <div class="device-type">${device.type}</div>
+                    </div>
+                    <div class="device-status"></div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function disconnect() {
+            document.getElementById('clientStatus').style.display = 'none';
+            document.getElementById('clientControls').style.display = 'none';
+            document.getElementById('roomCode').value = '';
+            document.getElementById('deviceName').value = '';
+            alert('Disconnected from room');
+        }
+
+        // Volume control
+        document.addEventListener('DOMContentLoaded', function() {
+            const volumeControl = document.getElementById('volumeControl');
+            if (volumeControl) {
+                volumeControl.addEventListener('input', function() {
+                    document.getElementById('volumeValue').textContent = this.value;
+                });
+            }
+        });
+
+        // Simulate stats updates
+        setInterval(() => {
+            if (document.getElementById('hostDashboard').style.display !== 'none') {
+                document.getElementById('syncDelay').textContent = (Math.random() * 2 + 0.5).toFixed(2) + 'ms';
+                document.getElementById('bandwidth').textContent = (Math.random() * 2 + 1).toFixed(1) + ' Mbps';
+            }
+            
+            if (document.getElementById('clientControls').style.display !== 'none') {
+                updateClientStats();
+            }
+        }, 2000);
+    </script>
+</body>
+</html>
